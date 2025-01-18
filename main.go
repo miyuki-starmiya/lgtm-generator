@@ -22,7 +22,7 @@ func main() {
 		log.Fatalf("Failed to get working directory: %v", err)
 	}
 	inputPath := fmt.Sprintf("%s/%s", wd, *basePath)
-	outputPath := fmt.Sprintf("output/%s", filepath.Base(*basePath))
+	outputPath := fmt.Sprintf("output/lgtm_%s", filepath.Base(*basePath))
 
 	if inputPath == "" {
 		log.Fatal("You must specify --input")
