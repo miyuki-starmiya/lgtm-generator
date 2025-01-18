@@ -9,6 +9,6 @@ go run . --input input-image
 ```
 
 ### Default
-- output path: $PWD/output/lgtm_${input-image}
+- output path: ./output/lgtm_${input-image}
 - lgtm path: ./assets/lgtm.png
 - resized width: 500px
