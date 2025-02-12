@@ -19,7 +19,7 @@ func main() {
 	// Parse flags
 	basePath := flag.String("input", "", "Input image path (gif, png, jpg, etc.)")
 	// lgtmFlag := flag.String("lgtm", "assets/lgtm.png", "Path to LGTM overlay image")
-	targetWidthFlag := flag.Int("width", 500, "Target width for resizing")
+	targetWidthFlag := flag.Int("width", 320, "Target width for resizing")
 	flag.Parse()
 
 	wd, err := os.Getwd()
@@ -32,9 +32,9 @@ func main() {
 	if inputPath == "" {
 		log.Fatal("You must specify --input")
 	}
-	if *targetWidthFlag == 500 {
-		lgtmPath = "assets/500_lgtm.png"
-		width = 500
+	if *targetWidthFlag == 320 {
+		lgtmPath = "assets/320_lgtm.png"
+		width = 320
 	} else {
 		lgtmPath = fmt.Sprintf("assets/%d_lgtm.png", *targetWidthFlag)
 		width = *targetWidthFlag

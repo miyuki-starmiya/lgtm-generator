@@ -15,11 +15,13 @@ go run . --input input-image
 
 ### Args
 ```sh
---input input path in input/
---width target width
+--input
+      input path in input/
+--width
+      target width. you can choose 320px, 500px
 ```
 
 ### Default
 - output path: ./output/${width}_lgtm_${input-image}
-- lgtm path: ./assets/500_lgtm.png
+- lgtm image path: ./assets/320_lgtm.png
 - target width: 500px
