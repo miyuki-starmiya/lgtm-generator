@@ -29,12 +29,8 @@ func main() {
 		log.Fatalf("Failed to get working directory: %v", err)
 	}
 	inputPath := fmt.Sprintf("%s/input/%s", wd, *basePath)
-	baseName := filepath.Base(*basePath)
-	ext := strings.ToLower(filepath.Ext(baseName))
-	if ext == ".webp" {
-		baseName = strings.TrimSuffix(baseName, filepath.Ext(baseName)) + ".png"
-	}
-	outputPath := fmt.Sprintf("output/%d_lgtm_%s", *targetWidthFlag, baseName)
+	ext := strings.ToLower(filepath.Ext(*basePath))
+	outputPath := fmt.Sprintf("output/%d_lgtm_%s", *targetWidthFlag, filepath.Base(*basePath))
 
 	if inputPath == "" {
 		log.Fatal("You must specify --input")
