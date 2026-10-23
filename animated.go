@@ -4,10 +4,10 @@ package main
 import (
 	"fmt"
 	"image"
+	"image/color/palette"
+	"image/draw"
 	"image/gif"
 	"os"
-
-	"github.com/disintegration/imaging"
 )
 
 func ProcessAnimatedGIF(inputPath, outputPath, lgtmPath string, targetWidth int) error {
@@ -36,22 +36,46 @@ func ProcessAnimatedGIF(inputPath, outputPath, lgtmPath string, targetWidth int)
 		return fmt.Errorf("failed to decode LGTM image: %w", err)
 	}
 
-	// 3. For each frame, "resize + overlay"
-	for i := range g.Image {
-		frame := g.Image[i] // *image.Paletted
+	// 3. Composite each frame onto a full-size canvas (GIF frames are often
+	// sub-rectangle deltas), then "resize + overlay" the whole canvas.
+	canvasRect := image.Rect(0, 0, g.Config.Width, g.Config.Height)
+	canvas := image.NewRGBA(canvasRect)
+	outW, outH := 0, 0
 
-		// Convert paletted frame to RGBA so we can manipulate it
-		rgbaFrame := imaging.Clone(frame) // => *image.NRGBA
-		// Our utility call:
-		processed := ResizeAndOverlayLGTM(rgbaFrame, lgtmImg, targetWidth)
+	for i, frame := range g.Image {
+		disposal := g.Disposal[i]
 
-		// Now we must convert it back to paletted to store in g.Image[i]
-		palettedFrame := ToPaletted(processed, frame)
+		// Remember the canvas for DisposalPrevious before drawing this frame.
+		var prev *image.RGBA
+		if disposal == gif.DisposalPrevious {
+			prev = image.NewRGBA(canvasRect)
+			draw.Draw(prev, canvasRect, canvas, image.Point{}, draw.Src)
+		}
 
+		draw.Draw(canvas, frame.Bounds(), frame, frame.Bounds().Min, draw.Over)
+
+		processed := ResizeAndOverlayLGTM(canvas, lgtmImg, targetWidth)
+
+		// Every output frame is full-size, so it starts at (0,0).
+		palettedFrame := image.NewPaletted(processed.Bounds(), palette.Plan9)
+		draw.FloydSteinberg.Draw(palettedFrame, palettedFrame.Bounds(), processed, processed.Bounds().Min)
+
+		// Frame bounds must be read before the loop variable is replaced.
+		frameBounds := frame.Bounds()
 		g.Image[i] = palettedFrame
-		g.Config.Width = palettedFrame.Bounds().Dx()
-		g.Config.Height = palettedFrame.Bounds().Dy()
+		g.Disposal[i] = gif.DisposalNone
+		outW, outH = palettedFrame.Bounds().Dx(), palettedFrame.Bounds().Dy()
+
+		// Apply this frame's original disposal before the next frame.
+		switch disposal {
+		case gif.DisposalBackground:
+			draw.Draw(canvas, frameBounds, image.Transparent, image.Point{}, draw.Src)
+		case gif.DisposalPrevious:
+			draw.Draw(canvas, canvasRect, prev, image.Point{}, draw.Src)
+		}
 	}
+	g.Config.Width = outW
+	g.Config.Height = outH
 
 	// 4. Save new GIF
 	outFile, err := os.Create(outputPath)
