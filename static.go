@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"image"
 	"os"
-	"path/filepath"
-	"strings"
 
 	"github.com/chai2010/webp"
 	"github.com/disintegration/imaging"
@@ -25,14 +23,7 @@ func ProcessStaticImage(inputPath, outputPath, lgtmPath string, targetWidth int)
 
 	final := ResizeAndOverlayLGTM(src, lgtmImg, targetWidth)
 
-	if strings.ToLower(filepath.Ext(outputPath)) == ".webp" {
-		return saveWebP(final, outputPath)
-	}
-
-	if err := imaging.Save(final, outputPath); err != nil {
-		return fmt.Errorf("failed to save static output: %w", err)
-	}
-	return nil
+	return saveWebP(final, outputPath)
 }
 
 func saveWebP(img image.Image, outputPath string) error {
@@ -42,7 +33,7 @@ func saveWebP(img image.Image, outputPath string) error {
 	}
 	defer f.Close()
 
-	if err := webp.Encode(f, img, &webp.Options{Lossless: true}); err != nil {
+	if err := webp.Encode(f, img, &webp.Options{Quality: 80}); err != nil {
 		return fmt.Errorf("failed to encode WebP: %w", err)
 	}
 	return nil
