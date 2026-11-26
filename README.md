@@ -26,6 +26,11 @@ go run . --input '*.gif' --width 500
 - A file that fails does not stop the rest. The summary `Done: N succeeded, M failed` is printed at the end, and the exit code is 1 if any file failed.
 - Files that differ only by extension (e.g. `chisato01.jpg` and `chisato01.webp`) would write the same output, so the second one is skipped and counted as failed.
 
+### Help
+```sh
+go run . --help
+```
+
 ### Args
 ```sh
 --input
@@ -41,3 +46,9 @@ go run . --input '*.gif' --width 500
   (GIF: ./output/${width}_lgtm_${input-image-name}.gif)
 - lgtm image path: ./assets/320_lgtm.png
 - target width: 320px
+
+## Test
+```sh
+go test ./...
+```
+Tests create their own images in a temp dir, so they do not need input/ or output/.
