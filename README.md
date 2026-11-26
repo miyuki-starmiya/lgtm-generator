@@ -14,11 +14,24 @@ in local.
 go run . --input input-image
 ```
 
+### Multiple files
+Pass a glob pattern (`*`, `?`, `[...]`) to process every matching file in input/.
+Quote the pattern, or the shell expands it in the current directory instead of input/
+(zsh stops with `no matches found`).
+```sh
+go run . --input 'rose0*.*'
+go run . --input 'rose0*'      # the extension can be omitted here too
+go run . --input '*.gif' --width 500
+```
+- A file that fails does not stop the rest. The summary `Done: N succeeded, M failed` is printed at the end, and the exit code is 1 if any file failed.
+- Files that differ only by extension (e.g. `chisato01.jpg` and `chisato01.webp`) would write the same output, so the second one is skipped and counted as failed.
+
 ### Args
 ```sh
 --input
       file name in input/. the extension can be omitted
       (if several files share the name, specify the extension)
+      or a quoted glob pattern such as 'rose0*' to process multiple files
 --width
       target width. you can choose 320px, 500px
 ```
