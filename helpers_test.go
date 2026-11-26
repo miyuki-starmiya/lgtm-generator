@@ -58,8 +58,10 @@ func writePNG(t *testing.T, path string, w, h int, c color.Color) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer f.Close()
 	if err := png.Encode(f, solid(w, h, c)); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.Close(); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -82,8 +84,10 @@ func writeGIF(t *testing.T, path string, w, h, frames int) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer f.Close()
 	if err := gif.EncodeAll(f, g); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.Close(); err != nil {
 		t.Fatal(err)
 	}
 }

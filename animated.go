@@ -82,10 +82,13 @@ func ProcessAnimatedGIF(inputPath, outputPath, lgtmPath string, targetWidth int)
 	if err != nil {
 		return fmt.Errorf("cannot create output file: %w", err)
 	}
-	defer outFile.Close()
-
 	if err := gif.EncodeAll(outFile, g); err != nil {
+		_ = outFile.Close()
 		return fmt.Errorf("gif.EncodeAll failed: %w", err)
+	}
+	// Close flushes the file, so its error means the output may be incomplete.
+	if err := outFile.Close(); err != nil {
+		return fmt.Errorf("cannot close output file: %w", err)
 	}
 
 	return nil
