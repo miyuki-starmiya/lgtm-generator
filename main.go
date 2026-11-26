@@ -2,9 +2,10 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
-	"log"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -14,74 +15,114 @@ import (
 
 const inputDir = "input"
 
+const usageText = `lgtm-generator overlays an LGTM image on pictures in input/ and writes them to output/.
+
+Usage:
+  go run . --input <name> [--width <320|500>]
+
+Input:
+  <name> is a file name in input/. The extension can be omitted.
+  If several files share the name (e.g. a.jpg and a.webp), specify the extension.
+  A glob pattern (*, ?, [...]) processes every matching file. Quote it so the
+  shell does not expand it in the current directory.
+
+Output:
+  Static images (jpg, png, webp, ...) -> output/<width>_lgtm_<name>.webp (lossy, quality 80)
+  GIF                                 -> output/<width>_lgtm_<name>.gif  (animated)
+
+Examples:
+  go run . --input aoba01
+  go run . --input coco01.jpeg --width 500
+  go run . --input 'rose0*'
+
+Flags:
+`
+
 func main() {
-	var (
-		lgtmPath string
-		width    int
-	)
+	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr))
+}
 
-	// Parse flags
-	nameFlag := flag.String("input", "", "Input file name in input/ (extension optional), or a glob pattern such as 'rose0*'")
-	targetWidthFlag := flag.Int("width", 320, "Target width for resizing")
-	flag.Parse()
-
-	if *nameFlag == "" {
-		log.Fatal("You must specify --input")
+// run executes the CLI and returns the exit code: 0 on success, 1 when
+// processing fails, 2 on invalid usage.
+func run(args []string, stdout, stderr io.Writer) int {
+	fs := flag.NewFlagSet("lgtm-generator", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+	name := fs.String("input", "", "file name in input/ (extension optional), or a quoted glob pattern such as 'rose0*'")
+	width := fs.Int("width", 320, "target width in px; assets/<width>_lgtm.png must exist (320, 500)")
+	// Parse calls fs.Usage itself on -h and on bad flags; print usage below
+	// instead, so --help goes to stdout.
+	fs.Usage = func() {}
+	usage := func(w io.Writer) {
+		fmt.Fprint(w, usageText)
+		fs.SetOutput(w)
+		fs.PrintDefaults()
 	}
-
-	if *targetWidthFlag == 320 {
-		lgtmPath = "assets/320_lgtm.png"
-		width = 320
-	} else {
-		lgtmPath = fmt.Sprintf("assets/%d_lgtm.png", *targetWidthFlag)
-		width = *targetWidthFlag
-	}
-	if _, err := os.Stat(lgtmPath); os.IsNotExist(err) {
-		log.Fatalf("LGTM image does not exist: %s", lgtmPath)
-	}
-
-	if !isPattern(*nameFlag) {
-		inputPath, err := resolveInput(inputDir, *nameFlag)
-		if err != nil {
-			log.Fatal(err)
+	if err := fs.Parse(args); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			usage(stdout)
+			return 0
 		}
-		outputPath, err := process(inputPath, lgtmPath, width)
-		if err != nil {
-			log.Fatal(err)
-		}
-		fmt.Printf("Generated: %s\n", outputPath)
-		return
+		usage(stderr)
+		return 2
 	}
 
-	inputPaths, err := matchInputs(inputDir, *nameFlag)
+	if *name == "" {
+		fmt.Fprintln(stderr, "error: you must specify --input (see --help)")
+		return 2
+	}
+
+	lgtmPath := fmt.Sprintf("assets/%d_lgtm.png", *width)
+	if _, err := os.Stat(lgtmPath); err != nil {
+		fmt.Fprintf(stderr, "error: LGTM image does not exist: %s\n", lgtmPath)
+		return 2
+	}
+
+	if !isPattern(*name) {
+		inputPath, err := resolveInput(inputDir, *name)
+		if err != nil {
+			fmt.Fprintf(stderr, "error: %v\n", err)
+			return 1
+		}
+		outputPath, err := process(inputPath, lgtmPath, *width)
+		if err != nil {
+			fmt.Fprintf(stderr, "error: %v\n", err)
+			return 1
+		}
+		fmt.Fprintf(stdout, "Generated: %s\n", outputPath)
+		return 0
+	}
+
+	inputPaths, err := matchInputs(inputDir, *name)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Fprintf(stderr, "error: %v\n", err)
+		return 1
 	}
 
 	// Inputs that differ only by extension would write the same output file.
 	written := map[string]string{}
 	failed := 0
 	for _, inputPath := range inputPaths {
-		out := outputPathFor(inputPath, width)
+		out := outputPathFor(inputPath, *width)
 		if prev, ok := written[out]; ok {
-			fmt.Printf("Skipped: %s (same output as %s: %s)\n", inputPath, prev, out)
+			fmt.Fprintf(stdout, "Skipped: %s (same output as %s: %s)\n", inputPath, prev, out)
 			failed++
 			continue
 		}
 		written[out] = inputPath
 
-		outputPath, err := process(inputPath, lgtmPath, width)
+		outputPath, err := process(inputPath, lgtmPath, *width)
 		if err != nil {
-			fmt.Printf("Failed: %s: %v\n", inputPath, err)
+			fmt.Fprintf(stdout, "Failed: %s: %v\n", inputPath, err)
 			failed++
 			continue
 		}
-		fmt.Printf("Generated: %s\n", outputPath)
+		fmt.Fprintf(stdout, "Generated: %s\n", outputPath)
 	}
-	fmt.Printf("Done: %d succeeded, %d failed\n", len(inputPaths)-failed, failed)
+	fmt.Fprintf(stdout, "Done: %d succeeded, %d failed\n", len(inputPaths)-failed, failed)
 	if failed > 0 {
-		os.Exit(1)
+		return 1
 	}
+	return 0
 }
 
 // process writes the LGTM image for inputPath and returns the output path.

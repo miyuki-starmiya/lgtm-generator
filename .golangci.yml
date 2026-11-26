@@ -1,0 +1,13 @@
+version: "2"
+
+linters:
+  settings:
+    errcheck:
+      exclude-functions:
+        # Writes to stdout/stderr; a failure there cannot be reported anyway.
+        - fmt.Fprint
+        - fmt.Fprintf
+        - fmt.Fprintln
+        # Closing a file opened for reading cannot lose data. Files opened for
+        # writing must check the error of Close (see AGENTS.md).
+        - (*os.File).Close

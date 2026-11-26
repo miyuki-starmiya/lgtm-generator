@@ -31,10 +31,13 @@ func saveWebP(img image.Image, outputPath string) error {
 	if err != nil {
 		return fmt.Errorf("failed to create output file: %w", err)
 	}
-	defer f.Close()
-
 	if err := webp.Encode(f, img, &webp.Options{Quality: 80}); err != nil {
+		_ = f.Close()
 		return fmt.Errorf("failed to encode WebP: %w", err)
+	}
+	// Close flushes the file, so its error means the output may be incomplete.
+	if err := f.Close(); err != nil {
+		return fmt.Errorf("failed to close output file: %w", err)
 	}
 	return nil
 }
